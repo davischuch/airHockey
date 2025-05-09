@@ -57,7 +57,14 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+int _write(int file, uint8_t* p, int len)
+{
+	if(HAL_UART_Transmit(&huart2, p, len, len) == HAL_OK )
+	{
+		return len;
+	}
+	return 0;
+}
 /* USER CODE END 0 */
 
 /**
@@ -104,11 +111,9 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  MPU6050_Read_All(&hi2c1, &MPU6050);
-	  char Gx = MPU6050.Gx;
-	  HAL_UART_Transmit(&huart2, "Gx: ", 4, TOUT);
-	  HAL_UART_Transmit(&huart2, (uint8_t *)Gx, 4, TOUT);
-	  HAL_UART_Transmit(&huart2, "\n\r", 2, TOUT);
 	  HAL_Delay(100);
+
+	  printf("ax: %f - ay: %f\n\r", MPU6050.Ax, MPU6050.Ay);
   }
   /* USER CODE END 3 */
 }

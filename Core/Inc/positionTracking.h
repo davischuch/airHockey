@@ -1,9 +1,13 @@
-#define DATA_ARRAY_SIZE 100 //define the size of the arrays
+#include "stm32f4xx_hal.h"
 
-void appendAxData();
+#define DATA_ARRAY_SIZE 100 //define the size of the arrays
+#define G_TO_MS2 9.80665 //define the conversion factor from g to m/s^2
+
+void appendAxData(double acceleration);
 void updateVxData();
 void updatePxData();
 void calibrate();
+double getTime(uint32_t cycles);
 
 double readSensorData();
 

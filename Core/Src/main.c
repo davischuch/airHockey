@@ -21,11 +21,11 @@
 #include "i2c.h"
 #include "usart.h"
 #include "gpio.h"
-#include "mpu6050.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "mpu6050.h"
+#include "positionTracking.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,19 +52,13 @@ MPU6050_t MPU6050;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+int _write(int file, uint8_t* p, int len);
+void DWT_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int _write(int file, uint8_t* p, int len)
-{
-	if(HAL_UART_Transmit(&huart2, p, len, len) == HAL_OK )
-	{
-		return len;
-	}
-	return 0;
-}
+
 /* USER CODE END 0 */
 
 /**
@@ -84,7 +78,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  DWT_Init();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -101,6 +95,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);
+  
+  calibrate();  //initial calibration of the sensor (it has to be at rest)
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,10 +106,13 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  MPU6050_Read_All(&hi2c1, &MPU6050);
-	  HAL_Delay(100);
+    MPU6050_Read_Accel(&hi2c1, &MPU6050);
 
-	  printf("ax: %f - ay: %f\n\r", MPU6050.Ax, MPU6050.Ay);
+    appendAxData(MPU6050.Ax);
+    updateVxData();
+    updatePxData();
+
+	  printf("Ax[%i]: %lf - Vx[%i]: %lf - Px[%i]: %lf\n\r", data_index, Ax[data_index], data_index, Vx[data_index], data_index, Px[data_index]);
   }
   /* USER CODE END 3 */
 }
@@ -169,6 +168,21 @@ void SystemClock_Config(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	HAL_UART_Transmit(&huart2, &CMD, 1, TOUT);
 	HAL_UART_Receive_IT(&huart2, &CMD, 1);
+}
+
+int _write(int file, uint8_t* p, int len)
+{
+	if(HAL_UART_Transmit(&huart2, p, len, len) == HAL_OK )
+	{
+		return len;
+	}
+	return 0;
+}
+
+void DWT_Init(void) {
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 /* USER CODE END 4 */
 

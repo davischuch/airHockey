@@ -21,11 +21,12 @@
 #include "i2c.h"
 #include "usart.h"
 #include "gpio.h"
+#include "mpu6050.h"
+#include "positionTracking.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "mpu6050.h"
-#include "positionTracking.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,7 +96,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);
-  
+
   calibrate();  //initial calibration of the sensor (it has to be at rest)
   /* USER CODE END 2 */
 
@@ -106,13 +107,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    MPU6050_Read_Accel(&hi2c1, &MPU6050);
+	MPU6050_Read_Accel(&hi2c1, &MPU6050);
 
-    appendAxData(MPU6050.Ax);
-    updateVxData();
-    updatePxData();
+	appendAxData(MPU6050.Ax);	//converts to m/s^2 and stores in Ax
+	updateVxData();
+	updatePxData();
 
-	  printf("Ax[%i]: %lf - Vx[%i]: %lf - Px[%i]: %lf\n\r", data_index, Ax[data_index], data_index, Vx[data_index], data_index, Px[data_index]);
+	printf("Ax[%i]: %i - Vx[%i]: %i - Px[%i]: %i\n\r", data_index, (int)(Ax[data_index]*1000), data_index, (int)(Vx[data_index]*1000), data_index, (int)(Px[data_index]*1000));
+
+	HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }

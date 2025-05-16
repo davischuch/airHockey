@@ -34,7 +34,7 @@
 #include <math.h>
 #include "mpu6050.h"
 #include "positionTracking.h"
-#include "main.c"
+#include "stm32f4xx_hal.h"
 
 #define RAD_TO_DEG 57.295779513082320876798154814105
 

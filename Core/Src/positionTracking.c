@@ -3,13 +3,19 @@
 #include <time.h>
 #include "positionTracking.h"
 #include "stm32f4xx_hal.h"
-#include "main.c"
 
+int data_index;         //variable to keep track of the number of elements in the arrays
+double Ax[DATA_ARRAY_SIZE]; //array to store x axis acceleration
+double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
+double Px[DATA_ARRAY_SIZE]; //array to store x axis position
+double Tx[DATA_ARRAY_SIZE]; //array to store time
+
+timeTracking_t timeTracking;
 
 void appendAxData(double acceleration){
     //STILL NOT FEATURED: start data overwriting when the array is full
     if(data_index<DATA_ARRAY_SIZE) data_index++;
-    
+
     Ax[data_index] = acceleration*G_TO_MS2;
 
     Tx[data_index] = timeTracking.current-timeTracking.initial; //ps: current time is overwritten right after the mesurement in "MPU6050_Read_Accel"
@@ -37,6 +43,7 @@ void calibrate(){
         Tx[i] = 0;
     }
 
+    data_index = 0;
     timeTracking.initial = getTime(DWT->CYCCNT);    //initialize the time tracking
 }
 

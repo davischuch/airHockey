@@ -75,6 +75,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+	int printableAx, printableAy;
 
   /* USER CODE END 1 */
 
@@ -111,9 +112,15 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  MPU6050_Read_All(&hi2c1, &MPU6050);
+
+	  //times 1k and turn to int, as printf doesn't print floats
+	  //this way the result is printed in g*10^-3
+	  printableAx = (int)(MPU6050.Ax*1000);
+	  printableAy = (int)(MPU6050.Ay*1000);
+
 	  HAL_Delay(100);
 
-	  printf("ax: %f - ay: %f\n\r", MPU6050.Ax, MPU6050.Ay);
+	  printf("ax: %i - ay: %i\n\r", printableAx, printableAy);
   }
   /* USER CODE END 3 */
 }

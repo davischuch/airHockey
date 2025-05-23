@@ -33,8 +33,6 @@
 
 #include <math.h>
 #include "mpu6050.h"
-#include "positionTracking.h"
-#include "stm32f4xx_hal.h"
 
 #define RAD_TO_DEG 57.295779513082320876798154814105
 
@@ -98,14 +96,14 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx)
     return 1;
 }
 
-void MPU6050_Read_Accel(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct)
+void MPU6050_Read_Accel(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct, double *current_time)
 {
     uint8_t Rec_Data[6];
 
     // Read 6 BYTES of data starting from ACCEL_XOUT_H register
 
     HAL_I2C_Mem_Read(I2Cx, MPU6050_ADDR, ACCEL_XOUT_H_REG, 1, Rec_Data, 6, i2c_timeout);
-    timeTracking.current = getTime(DWT->CYCCNT);    //read time as soon as the data is read (function from positionTracking.h)
+    *current_time = (double)(HAL_GetTick())/1000;    //read time as soon as the data is read
 
     DataStruct->Accel_X_RAW = (int16_t)(Rec_Data[0] << 8 | Rec_Data[1]);
     DataStruct->Accel_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data[3]);

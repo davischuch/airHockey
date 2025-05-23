@@ -21,12 +21,11 @@
 #include "i2c.h"
 #include "usart.h"
 #include "gpio.h"
-#include "mpu6050.h"
-#include "positionTracking.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "mpu6050.h"
+#include "positionTracking.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,13 +47,25 @@ char CMD;
 
 /* USER CODE BEGIN PV */
 MPU6050_t MPU6050;
+
+struct positionTracking_t
+{
+    double initial;
+    double current;
+};
+struct positionTracking_t timeTracking;
+
+int data_index;         //variable to keep track of the number of elements in the arrays
+double Ax[DATA_ARRAY_SIZE]; //array to store x axis acceleration
+double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
+double Px[DATA_ARRAY_SIZE]; //array to store x axis position
+double Tx[DATA_ARRAY_SIZE]; //array to store time
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 int _write(int file, uint8_t* p, int len);
-void DWT_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -79,7 +90,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  DWT_Init();
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -97,7 +108,7 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);
 
-  calibrate();  //initial calibration of the sensor (it has to be at rest)
+  calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial);  //initial calibration of the sensor (it has to be at rest)
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -107,15 +118,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	MPU6050_Read_Accel(&hi2c1, &MPU6050);
+	MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
 
-	appendAxData(MPU6050.Ax);	//converts to m/s^2 and stores in Ax
-	updateVxData();
-	updatePxData();
+	appendAxData(MPU6050.Ax, Ax, Tx, &data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
+	updateVxData(Ax, Vx, Tx, &data_index);	//calculates velocity based on acceleration data
+	updatePxData(Vx, Px, Tx, &data_index);	//calculates position based on velocity data
 
-	printf("Ax[%i]: %i - Vx[%i]: %i - Px[%i]: %i\n\r", data_index, (int)(Ax[data_index]*1000), data_index, (int)(Vx[data_index]*1000), data_index, (int)(Px[data_index]*1000));
+	printf("Ax[%i]: %i - Vx[%i]: %i - Tx[%i]: %i\n\r", data_index, (int)(Ax[data_index]*1000), data_index, (int)(Vx[data_index]*1000), data_index, (int)(Tx[data_index]*1000));
 
-	HAL_Delay(100);
+	HAL_Delay(1);
   }
   /* USER CODE END 3 */
 }
@@ -180,12 +191,6 @@ int _write(int file, uint8_t* p, int len)
 		return len;
 	}
 	return 0;
-}
-
-void DWT_Init(void) {
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  DWT->CYCCNT = 0;
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 /* USER CODE END 4 */
 

@@ -1,26 +1,22 @@
 #include "positionTracking.h"
 
-void appendAxData(double acceleration, double *accelerationArray, double *timeArray, int *data_index, double initial_time, double current_time){
+void appendAxData(double acceleration, double *accelerationArray, double *timeArray, int index, double initial_time, double current_time){
     //STILL NOT FEATURED: start data overwriting when the array is full
-    int index = *data_index;
-    
     accelerationArray[index] = acceleration*G_TO_MS2;
 
     timeArray[index] = current_time-initial_time; //ps: current time is overwritten right after the mesurement in "MPU6050_Read_Accel"
-
-    if(index<DATA_ARRAY_SIZE) *(data_index)++;
 }
 
-void updateVxData(double *accelerationArray, double *velocityArray, double *timeArray, int *data_index){
+void updateVxData(double *accelerationArray, double *velocityArray, double *timeArray, int index){
     //calculate velocity based on acceleration data
-    for(int i=1; i<*data_index; i++){
-        velocityArray[i] = accelerationArray[i-1] * (timeArray[i]-timeArray[i-1]) + velocityArray[i-1];
+    for(int i=1; i<=index; i++){
+    	velocityArray[i] = accelerationArray[i-1] * (timeArray[i]-timeArray[i-1]) + velocityArray[i-1];
     }
 }
 
-void updatePxData(double *velocityArray, double *positionArray, double *timeArray, int *data_index){
+void updatePxData(double *velocityArray, double *positionArray, double *timeArray, int index){
     //calculate position based on velocity data
-    for(int i=1; i<*data_index; i++){
+    for(int i=1; i<=index; i++){
         positionArray[i] = velocityArray[i-1] * (timeArray[i]-timeArray[i-1]) + positionArray[i-1];
     }
 }

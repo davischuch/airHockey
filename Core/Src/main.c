@@ -120,13 +120,19 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
 
-	appendAxData(MPU6050.Ax, Ax, Tx, &data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
-	updateVxData(Ax, Vx, Tx, &data_index);	//calculates velocity based on acceleration data
-	updatePxData(Vx, Px, Tx, &data_index);	//calculates position based on velocity data
+	appendAxData(MPU6050.Ax, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
+	updateVxData(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
+	updatePxData(Vx, Px, Tx, data_index);	//calculates position based on velocity data
 
-	printf("Ax[%i]: %i - Vx[%i]: %i - Tx[%i]: %i\n\r", data_index, (int)(Ax[data_index]*1000), data_index, (int)(Vx[data_index]*1000), data_index, (int)(Tx[data_index]*1000));
+	if(data_index<DATA_ARRAY_SIZE)  data_index++;
 
-	HAL_Delay(1);
+	HAL_Delay(1);	//MPU-6050 max acceleration sample rate is 1kHz
+
+	if(data_index==DATA_ARRAY_SIZE){
+		for(int i=0; i<DATA_ARRAY_SIZE; i++){
+			printf("\n\rAx[%i]: %i - Vx[%i]: %i - Px[%i]: %i - Tx[%i]: %i\n\r", i, (int)(Ax[i]*1000), i, (int)(Vx[i]*1000), i, (int)(Px[i]*1000), i, (int)(Tx[i]*1000));
+		}
+	}
   }
   /* USER CODE END 3 */
 }

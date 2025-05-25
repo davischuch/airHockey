@@ -129,11 +129,10 @@ int main(void)
   appendAxData(MPU6050.Ax, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
   calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
   calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
-
-  //UNTESTED: test if array shifting works. Next, check also the previous values, if are they being stored and deleted correctly
-  printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000), (int)(Tx[data_index]*1000), data_index);
-  printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[5]*1000), (int)(Vx[5]*1000), (int)(Px[5]*1000), (int)(Tx[5]*1000), 5);
-  printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[10]*1000), (int)(Vx[10]*1000), (int)(Px[10]*1000), (int)(Tx[10]*1000), 10);
+  
+  if(HAL_GetTick()%1000==0){ //print data every second
+    printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000), (int)(Tx[data_index]*1000), data_index);
+  }
 
   if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
   else                              shift=1; //if the array is full, start shifting

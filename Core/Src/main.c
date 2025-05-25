@@ -20,6 +20,7 @@
 #include "main.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -63,7 +64,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+int xPosition = 1, yPosition = 1;
+int xDirection = 0, yDirection = 0;
 /* USER CODE END 0 */
 
 /**
@@ -97,41 +99,18 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_SPI2_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim10);
 
+  lcd5110_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-  lcd5110_init();
-
-  int xPosition = 1, yPosition = 1;
-  int xDirection = 0, yDirection = 0;
-
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
     /* USER CODE BEGIN 3 */
-	lcd5110_clear();
-	lcd5110_refresh();
-
-	if (xPosition >= MAX_X) xDirection = FALSE;
-	if (yPosition >= MAX_Y) yDirection = FALSE;
-	if (xPosition <= MIN_X) xDirection = TRUE;
-	if (yPosition <= MIN_Y) yDirection = TRUE;
-
-
-	if (!xDirection) xPosition = ++xPosition;
-	else xPosition = --xPosition;
-
-	if (!yDirection) yPosition = ++yPosition;
-	else yPosition = --yPosition;
-
-	lcd5110_box(xPosition, yPosition, 5, 5);
-	lcd5110_refresh();
-	HAL_Delay(100);
-
   }
   /* USER CODE END 3 */
 }
@@ -184,7 +163,27 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Instance == TIM10) {
+		lcd5110_clear();
+		lcd5110_refresh();
 
+		if (xPosition >= MAX_X) xDirection = FALSE;
+		if (yPosition >= MAX_Y) yDirection = FALSE;
+		if (xPosition <= MIN_X) xDirection = TRUE;
+		if (yPosition <= MIN_Y) yDirection = TRUE;
+
+
+		if (!xDirection) xPosition = ++xPosition;
+		else xPosition = --xPosition;
+
+		if (!yDirection) yPosition = ++yPosition;
+		else yPosition = --yPosition;
+
+		lcd5110_box(xPosition, yPosition, 5, 5);
+		lcd5110_refresh();
+	}
+}
 /* USER CODE END 4 */
 
 /**

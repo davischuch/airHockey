@@ -6,18 +6,14 @@ void appendAxData(double acceleration, double *accelerationArray, double *timeAr
     timeArray[index] = current_time-initial_time; //ps: current time is overwritten right after the mesurement in "MPU6050_Read_Accel"
 }
 
-void updateVxData(double *accelerationArray, double *velocityArray, double *timeArray, int index){   
+void calculateVx(double *accelerationArray, double *velocityArray, double *timeArray, int index){   
     //calculate velocity based on acceleration data
-    for(int i=1; i<=index; i++){
-    	velocityArray[i] = accelerationArray[i-1] * (timeArray[i]-timeArray[i-1]) + velocityArray[i-1];
-    }
+    velocityArray[index] = accelerationArray[index-1] * (timeArray[index]-timeArray[index-1]) + velocityArray[index-1];
 }
 
-void updatePxData(double *velocityArray, double *positionArray, double *timeArray, int index){
+void calculatePx(double *velocityArray, double *positionArray, double *timeArray, int index){
     //calculate position based on velocity data
-    for(int i=1; i<=index; i++){
-        positionArray[i] = velocityArray[i-1] * (timeArray[i]-timeArray[i-1]) + positionArray[i-1];
-    }
+    positionArray[index] = velocityArray[index-1] * (timeArray[index]-timeArray[index-1]) + positionArray[index-1];
 }
 
 void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *current_time){

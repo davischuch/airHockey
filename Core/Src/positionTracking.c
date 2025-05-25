@@ -1,13 +1,12 @@
 #include "positionTracking.h"
 
 void appendAxData(double acceleration, double *accelerationArray, double *timeArray, int index, double initial_time, double current_time){
-    //STILL NOT FEATURED: start data overwriting when the array is full
     accelerationArray[index] = acceleration*G_TO_MS2;
 
     timeArray[index] = current_time-initial_time; //ps: current time is overwritten right after the mesurement in "MPU6050_Read_Accel"
 }
 
-void updateVxData(double *accelerationArray, double *velocityArray, double *timeArray, int index){
+void updateVxData(double *accelerationArray, double *velocityArray, double *timeArray, int index){   
     //calculate velocity based on acceleration data
     for(int i=1; i<=index; i++){
     	velocityArray[i] = accelerationArray[i-1] * (timeArray[i]-timeArray[i-1]) + velocityArray[i-1];
@@ -31,4 +30,12 @@ void calibrate(double *accelerationArray, double *velocityArray, double *positio
 
     *data_index = 0;
     *current_time = (double)(HAL_GetTick())/1000;    //initialize the time tracking
+}
+
+void shiftArray(double *array){
+    //shift the array to the left
+    for(int i=0; i<DATA_ARRAY_SIZE-1; i++){
+        array[i] = array[i+1];
+    }
+    array[DATA_ARRAY_SIZE-1] = 0;
 }

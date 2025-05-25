@@ -18,3 +18,4 @@ void appendAxData(double acceleration, double *accelerationArray, double *timeAr
 void updateVxData(double *accelerationArray, double *velocityArray, double *timeArray, int index);
 void updatePxData(double *velocityArray, double *positionArray, double *timeArray, int index);
 void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *current_time);
+void shiftArray(double *array);

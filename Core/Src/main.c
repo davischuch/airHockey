@@ -120,19 +120,24 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
 
-	appendAxData(MPU6050.Ax, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
-	updateVxData(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
-	updatePxData(Vx, Px, Tx, data_index);	//calculates position based on velocity data
+	if(data_index>=DATA_ARRAY_SIZE-1){ //if the array is not full, do not shift
+    shiftArray(Ax);	//shifts the array to the left
+    shiftArray(Vx);
+    shiftArray(Px);
+    shiftArray(Tx);
+  }
+  appendAxData(MPU6050.Ax, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
+  updateVxData(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
+  updatePxData(Vx, Px, Tx, data_index);	//calculates position based on velocity data
 
-	if(data_index<DATA_ARRAY_SIZE)  data_index++;
+  //UNTESTED: test if array shifting works. Next, check also the previous values, if are they being stored and deleted correctly
+  printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000), (int)(Tx[data_index]*1000), data_index);
+  printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[5]*1000), (int)(Vx[5]*1000), (int)(Px[5]*1000), (int)(Tx[5]*1000), 5);
+  printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[10]*1000), (int)(Vx[10]*1000), (int)(Px[10]*1000), (int)(Tx[10]*1000), 10);
 
-	HAL_Delay(1);	//MPU-6050 max acceleration sample rate is 1kHz
-
-	if(data_index==DATA_ARRAY_SIZE){
-		for(int i=0; i<DATA_ARRAY_SIZE; i++){
-			printf("\n\rAx[%i]: %i - Vx[%i]: %i - Px[%i]: %i - Tx[%i]: %i\n\r", i, (int)(Ax[i]*1000), i, (int)(Vx[i]*1000), i, (int)(Px[i]*1000), i, (int)(Tx[i]*1000));
-		}
-	}
+  if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
+  
+  //HAL_Delay(1);	//MPU-6050 max acceleration sample rate is 1kHz
   }
   /* USER CODE END 3 */
 }

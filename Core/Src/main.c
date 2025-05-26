@@ -32,9 +32,27 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 enum {
-	TRUE = 0,
-	FALSE
+	DOWN = 0,
+	UP
 };
+
+typedef struct {
+	int width;
+	int height;
+	int xPosition;
+	int yPosition;
+	int xDirection;
+	int yDirection;
+} ball_t;
+
+typedef struct {
+	int width;
+	int height;
+	int xPosition;
+	int yPosition;
+	int xDirection;
+	int yDirection;
+} stick_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -42,7 +60,7 @@ enum {
 #define MIN_X 2
 #define MAX_X 82
 #define MIN_Y 2
-#define MAX_Y 45
+#define MAX_Y 46
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -59,13 +77,29 @@ enum {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void checkCollision();
+void moveBall();
+void drawBall();
+void drawStick();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int xPosition = 1, yPosition = 1;
-int xDirection = 0, yDirection = 0;
+ball_t ball = {
+	.width = 5,
+	.height = 5,
+	.xPosition = 1,
+	.yPosition = 1,
+	.xDirection = DOWN,
+	.yDirection = DOWN
+};
+
+stick_t stick = {
+	.width = 5,
+	.height = 10,
+	.xPosition = MAX_X / 2,
+	.yPosition = MAX_Y / 2
+};
 /* USER CODE END 0 */
 
 /**
@@ -100,8 +134,12 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI2_Init();
   MX_TIM10_Init();
+  MX_TIM11_Init();
+  MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim10);
+  HAL_TIM_Base_Start_IT(&htim11);
+  HAL_TIM_Base_Start_IT(&htim14);
 
   lcd5110_init();
   /* USER CODE END 2 */
@@ -110,6 +148,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1) {
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -164,25 +203,42 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	if (htim->Instance == TIM10) {
+	if (htim->Instance == TIM11) { //20Hz
 		lcd5110_clear();
-		lcd5110_refresh();
 
-		if (xPosition >= MAX_X) xDirection = FALSE;
-		if (yPosition >= MAX_Y) yDirection = FALSE;
-		if (xPosition <= MIN_X) xDirection = TRUE;
-		if (yPosition <= MIN_Y) yDirection = TRUE;
+		moveBall();
+		drawBall();
+		drawStick();
 
-
-		if (!xDirection) xPosition = ++xPosition;
-		else xPosition = --xPosition;
-
-		if (!yDirection) yPosition = ++yPosition;
-		else yPosition = --yPosition;
-
-		lcd5110_box(xPosition, yPosition, 5, 5);
 		lcd5110_refresh();
 	}
+}
+
+void checkCollision() {
+
+}
+
+void moveBall() {
+	checkCollision();
+
+	if (ball.xPosition >= MAX_X) ball.xDirection = UP;
+	if (ball.xPosition <= MIN_X) ball.xDirection = DOWN;
+	if (ball.yPosition >= MAX_Y) ball.yDirection = UP;
+	if (ball.yPosition <= MIN_Y) ball.yDirection = DOWN;
+
+	if (!ball.xDirection) ball.xPosition = ++ball.xPosition;
+	else ball.xPosition = --ball.xPosition;
+
+	if (!ball.yDirection) ball.yPosition = ++ball.yPosition;
+	else ball.yPosition = --ball.yPosition;
+}
+
+void drawBall() {
+	lcd5110_box(ball.xPosition, ball.yPosition, ball.width, ball.height);
+}
+
+void drawStick() {
+	lcd5110_box(stick.xPosition, stick.yPosition, stick.width, stick.height);
 }
 /* USER CODE END 4 */
 

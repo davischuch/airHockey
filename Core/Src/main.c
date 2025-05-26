@@ -25,7 +25,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "mpu6050.h"
-#include "positionTracking.h"
+#include "calibration.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,18 +48,7 @@ char CMD;
 /* USER CODE BEGIN PV */
 MPU6050_t MPU6050;
 
-struct positionTracking_t
-{
-    double initial;
-    double current;
-};
-struct positionTracking_t timeTracking;
-
-int data_index, shift=0;    //variable to keep track of the number of elements in the arrays
-double Ax[DATA_ARRAY_SIZE]; //array to store x axis acceleration
-double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
-double Px[DATA_ARRAY_SIZE]; //array to store x axis position
-double Tx[DATA_ARRAY_SIZE]; //array to store time
+double Sx, Sy, Sz; //slope X, Y and Z
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -107,8 +96,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);
-
-  calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial);  //initial calibration of the sensor (it has to be at rest)
+  printf("\n\n\r");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -118,24 +106,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
-
-	if(shift){ //if the array is not full, do not shift
-    shiftArray(Ax);	//shifts the array to the left
-    shiftArray(Vx);
-    shiftArray(Px);
-    shiftArray(Tx);
-  }
-  appendAxData(MPU6050.Ax, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
-  calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
-  calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
+    MPU6050_Read_Accel(&hi2c1, &MPU6050);
+    calibrate(&Sx, &Sy, MPU6050.Ax, MPU6050.Ay, MPU6050.Az);
   
-  if(HAL_GetTick()%1000==0){ //print data every second
-    printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000), (int)(Tx[data_index]*1000), data_index);
-  }
-
-  if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
-  else                              shift=1; //if the array is full, start shifting
+    printf("SlopeX: %i, SlopeY: %i          \r", (int)(Sx), (int)(Sy));
 
   }
   /* USER CODE END 3 */

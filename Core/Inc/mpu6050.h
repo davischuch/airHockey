@@ -50,7 +50,7 @@ typedef struct
 
 uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx);
 
-void MPU6050_Read_Accel(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct, double *current_time);
+void MPU6050_Read_Accel(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
 
 void MPU6050_Read_Gyro(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
 

@@ -25,7 +25,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "mpu6050.h"
-#include "calibration.h"
+#include "positionTracking.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -106,10 +106,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    MPU6050_Read_Accel(&hi2c1, &MPU6050);
-    calibrate(&Sx, &Sy, MPU6050.Ax, MPU6050.Ay, MPU6050.Az);
+	  MPU6050_Read_All(&hi2c1, &MPU6050);
   
-    printf("SlopeX: %i, SlopeY: %i          \r", (int)(Sx), (int)(Sy));
+    printf("SlopeX: %i, SlopeY: %i            \r", (int)MPU6050.KalmanAngleX, (int)MPU6050.KalmanAngleY);
 
   }
   /* USER CODE END 3 */

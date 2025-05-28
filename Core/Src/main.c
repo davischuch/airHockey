@@ -25,7 +25,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "mpu6050.h"
-#include "positionTracking.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -181,7 +180,7 @@ int _write(int file, uint8_t* p, int len)
 
 void stabilizeKalman(){
   //Kalman filter algorithm requires some time to stabilize
-  
+
   printf("Calibration in progress\n\rPlease STAY STILL!!!\n\r");
   for (int i = 0; i < 2000; i++) {
       MPU6050_Read_All(&hi2c1, &MPU6050);

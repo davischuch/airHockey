@@ -55,6 +55,7 @@ double Sx, Sy, Sz; //slope X, Y and Z
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 int _write(int file, uint8_t* p, int len);
+void stabilizeKalman();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -97,6 +98,8 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);
   printf("\n\n\r");
+
+  stabilizeKalman();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -174,6 +177,17 @@ int _write(int file, uint8_t* p, int len)
 		return len;
 	}
 	return 0;
+}
+
+void stabilizeKalman(){
+  //Kalman filter algorithm requires some time to stabilize
+  
+  printf("Calibration in progress\n\rPlease STAY STILL!!!\n\r");
+  for (int i = 0; i < 2000; i++) {
+      MPU6050_Read_All(&hi2c1, &MPU6050);
+      HAL_Delay(1);
+  }
+  printf("Calibration done\n\r");
 }
 /* USER CODE END 4 */
 

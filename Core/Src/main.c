@@ -92,8 +92,8 @@ void drawStick();
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 ball_t ball = {
-	.width = 2,
-	.height = 2,
+	.width = 4,
+	.height = 4,
 	.xPosition = 1,
 	.yPosition = 1,
 	.xDirection = RIGHT,
@@ -102,7 +102,7 @@ ball_t ball = {
 
 stick_t stick = {
 	.width = 10,
-	.height = 15,
+	.height = 30,
 	.xPosition = MAX_X / 2,
 	.yPosition = MAX_Y / 2,
 	.xDirection = RIGHT,
@@ -144,6 +144,7 @@ int main(void)
   MX_TIM10_Init();
   MX_TIM11_Init();
   MX_TIM14_Init();
+  MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim10);
   HAL_TIM_Base_Start_IT(&htim11);
@@ -212,20 +213,24 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM10) {
-		moveBall();
 	}
 	if (htim->Instance == TIM11) {
 		moveStick();
 	}
-	if (htim->Instance == TIM14) { //20Hz
+	if (htim->Instance == TIM13	) { //100Hz atualização da colisão
+	}
+	if (htim->Instance == TIM14) { //50Hz atualização da tela
 		lcd5110_clear();
 
+		moveBall();
+		checkCollision();
 		drawBall();
 		drawStick();
 
 		lcd5110_refresh();
 	}
 }
+
 
 void checkCollision() {
 	int p = stick.yPosition - (stick.height / 2) - 1,
@@ -234,30 +239,42 @@ void checkCollision() {
 		s = stick.xPosition + (stick.width / 2) + 1;
 	int x = ball.xPosition, y = ball.yPosition;
 
-	if ((y > p) && (y < q) && (x == r)) ball.xDirection = !(ball.xDirection); //hit from left
-	if ((y > p) && (y < q) && (x == s)) ball.xDirection = !(ball.xDirection); //hit from right
-	if ((x > r) && (x < s) && (y == q)) ball.yDirection = !(ball.yDirection); //hit from bellow
-	if ((x > r) && (x < s) && (y == p)) ball.yDirection = !(ball.yDirection); //hit from above
+	if ((y > p) && (y < q) && (x == r) && (ball.xDirection == RIGHT)) ball.xDirection = !(ball.xDirection); //hit from left
+	if ((y > p) && (y < q) && (x == s) && (ball.xDirection == LEFT)) ball.xDirection = !(ball.xDirection); //hit from right
+	if ((x > r) && (x < s) && (y == q) && (ball.yDirection == UP)) ball.yDirection = !(ball.yDirection); //hit from bellow
+	if ((x > r) && (x < s) && (y == p) && (ball.yDirection == DOWN)) ball.yDirection = !(ball.yDirection); //hit from above
 
 	//diagonals
-//	if (((y == p) && (x == r)) || ((y == p) && (x == s)) || ((y == q) && (x == r)) || ((y == q) && (x == s))) {
-//		ball.xDirection = !(ball.xDirection);
-//		ball.yDirection = !(ball.yDirection);
-//	}
+	if ((x == r) && (y == q) && (ball.xDirection == RIGHT) && (ball.yDirection == UP)) { //bottom left
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
+	if ((x == r) && (y == p) && (ball.xDirection == RIGHT) && (ball.yDirection == DOWN)) { //top left
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
+	if ((x == s) && (y == q) && (ball.xDirection == LEFT) && (ball.yDirection == UP)) { //bottom right
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
+	if ((x == s) && (y == p) && (ball.xDirection == LEFT) && (ball.yDirection == DOWN)) { //top right
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
 }
 
 void moveStick() {
-//	if ((stick.yPosition + (stick.height/2) + 2) >= MAX_Y) stick.yDirection = UP;
-//	if ((stick.yPosition - (stick.height/2) - 2) <= MIN_Y) stick.yDirection = DOWN;
+	if ((stick.yPosition + (stick.height/2) + 2) >= MAX_Y) stick.yDirection = UP;
+	if ((stick.yPosition - (stick.height/2) - 2) <= MIN_Y) stick.yDirection = DOWN;
+
+	if (!stick.yDirection) stick.yPosition = ++stick.yPosition;
+	else stick.yPosition = --stick.yPosition;
+
+//	if (stick.xPosition >= MAX_X) stick.xDirection = LEFT;
+//	if (stick.xPosition <= MIN_X) stick.xDirection = RIGHT;
 //
-//	if (!stick.yDirection) stick.yPosition = ++stick.yPosition;
-//	else stick.yPosition = --stick.yPosition;
-
-	if (stick.xPosition >= MAX_X) stick.xDirection = LEFT;
-	if (stick.xPosition <= MIN_X) stick.xDirection = RIGHT;
-
-	if (!stick.xDirection) stick.xPosition = ++stick.xPosition;
-	else stick.xPosition = --stick.xPosition;
+//	if (!stick.xDirection) stick.xPosition = ++stick.xPosition;
+//	else stick.xPosition = --stick.xPosition;
 }
 
 void moveBall() {

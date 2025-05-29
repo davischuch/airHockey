@@ -59,6 +59,7 @@ int data_index, shift=0;    //variable to keep track of the number of elements i
 double Ax[DATA_ARRAY_SIZE]; //array to store x axis acceleration
 double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
 double Px[DATA_ARRAY_SIZE]; //array to store x axis position
+
 double Tx[DATA_ARRAY_SIZE]; //array to store time
 /* USER CODE END PV */
 
@@ -90,7 +91,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  double AxR;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -108,7 +109,9 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);
 
-  calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial);  //initial calibration of the sensor (it has to be at rest)
+  printf("\n\n\rCalibration in progress\n\rPlease STAY STILL!!!\n\r");
+  calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
+  printf("Calibration done\n\r");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -118,24 +121,22 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
+	MPU6050_Read_All(&hi2c1, &MPU6050, &timeTracking.current);
 
 	if(shift){ //if the array is not full, do not shift
-    shiftArray(Ax);	//shifts the array to the left
-    shiftArray(Vx);
-    shiftArray(Px);
-    shiftArray(Tx);
-  }
-  appendAxData(MPU6050.Ax, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
-  calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
-  calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
-  
-  if(HAL_GetTick()%1000==0){ //print data every second
-    printf("\n\rAx: %i mm/s^2, Vx: %i mm/s, Px: %i mm, Tx: %i ms, data_index: %i\r\n", (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000), (int)(Tx[data_index]*1000), data_index);
-  }
+		shiftArray(Ax);	//shifts the array to the left
+		shiftArray(Vx);
+		shiftArray(Px);
+		shiftArray(Tx);
+	}
+	appendAxData(&MPU6050, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
+	calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
+	calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
 
-  if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
-  else                              shift=1; //if the array is full, start shifting
+	printf("slopeX: %i, slopeY: %i, Ax: %imm/s^2                    \r", (int)(MPU6050.KalmanAngleX*1000), (int)(MPU6050.KalmanAngleY*1000), (int)(Ax[data_index]*1000));
+
+	if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
+	else                              shift=1; //if the array is full, start shifting
 
   }
   /* USER CODE END 3 */

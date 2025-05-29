@@ -19,6 +19,12 @@ void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *time
 void calculateVx(double *accelerationArray, double *velocityArray, double *timeArray, int index){   
     //calculate velocity based on acceleration data
     velocityArray[index] = accelerationArray[index-1] * (timeArray[index]-timeArray[index-1]) + velocityArray[index-1];
+
+    //if the last 30 acceleration measurements were < 2mm/s² (~160mm/s² before sigmoid), set the velocity to 0
+    for(int i=index; i>index-30; i--){
+        if(accelerationArray[i]>0.002) return;
+    }
+    velocityArray[index] = 0;
 }
 
 void calculatePx(double *velocityArray, double *positionArray, double *timeArray, int index){

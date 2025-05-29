@@ -82,7 +82,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	double avAx=0, amount=0, print=0;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -91,7 +91,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  double AxR;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -133,20 +133,7 @@ int main(void)
 	calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
 	calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
 
-	printf("slopeX: %i, slopeY: %i, Ax: %imm/s^2                    \r", (int)(MPU6050.KalmanAngleX*1000), (int)(MPU6050.KalmanAngleY*1000), (int)(Ax[data_index]*1000));
-
-	//delete this block when tests are done
-	avAx += fabs(Ax[data_index]);
-  amount++;
-  if(data_index==498)  print=1;
-	if(print){
-		avAx /= amount;
-    printf("\n\rAverage Ax: %imm/s^2\n\r", (int)(avAx*1000));
-		print = 0;
-		avAx = 0;
-    amount = 0;
-		calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
-	}
+	printf("Ax: %imm/s^2 - Vx: %imm/s - Px: %imm             \r", (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
 
 	if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
 	else                              shift=1; //if the array is full, start shifting

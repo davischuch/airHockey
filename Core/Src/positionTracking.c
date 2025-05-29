@@ -11,7 +11,7 @@ void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *time
     realA = cos(DataStruct->KalmanAngleY*DEG_TO_RAD) * (DataStruct->Ax + sin(DataStruct->KalmanAngleY*DEG_TO_RAD));
     realA *= G_TO_MS2; //convert to m/s^2
 
-    accelerationArray[index] = realA;
+    accelerationArray[index] = sigmoidFilter(realA);
 
     timeArray[index] = current_time-initial_time; //ps: current time is overwritten right after the mesurement in "MPU6050_Read_Accel"
 }
@@ -54,4 +54,13 @@ void shiftArray(double *array){
         array[i] = array[i+1];
     }
     array[DATA_ARRAY_SIZE-1] = 0;
+}
+
+double sigmoidFilter(double acceleration){
+    double exponent, Fx;
+    
+    exponent = -21.05*fabs(acceleration)+7.75;
+    Fx = 1/(1+exp(exponent));
+
+    return Fx*acceleration;
 }

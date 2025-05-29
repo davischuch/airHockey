@@ -82,7 +82,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	double maxAx=0, print=0;
+	double avAx=0, amount=0, print=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -136,14 +136,15 @@ int main(void)
 	printf("slopeX: %i, slopeY: %i, Ax: %imm/s^2                    \r", (int)(MPU6050.KalmanAngleX*1000), (int)(MPU6050.KalmanAngleY*1000), (int)(Ax[data_index]*1000));
 
 	//delete this block when tests are done
-	if(data_index==498)  print=1;
-	if(fabs(maxAx)<fabs(Ax[data_index])) {
-		maxAx = Ax[data_index];
-	}
+	avAx += fabs(Ax[data_index]);
+  amount++;
+  if(data_index==498)  print=1;
 	if(print){
-		printf("\n\rMax Ax: %imm/s^2\n\r", (int)(maxAx*1000));
+		avAx /= amount;
+    printf("\n\rAverage Ax: %imm/s^2\n\r", (int)(avAx*1000));
 		print = 0;
-		maxAx = 0;
+		avAx = 0;
+    amount = 0;
 		calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
 	}
 

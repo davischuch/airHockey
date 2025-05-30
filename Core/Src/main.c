@@ -61,6 +61,8 @@ double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
 double Px[DATA_ARRAY_SIZE]; //array to store x axis position
 
 double Tx[DATA_ARRAY_SIZE]; //array to store time
+
+double slope[2];	//slope[0] is the Y-axis slope, and slope[1] is the X-axis
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,7 +93,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  double AxR;
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -110,7 +112,7 @@ int main(void)
   while (MPU6050_Init(&hi2c1) == 1);
 
   printf("\n\n\rCalibration in progress\n\rPlease STAY STILL!!!\n\r");
-  calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
+  calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial, slope, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
   printf("Calibration done\n\r");
   /* USER CODE END 2 */
 
@@ -129,14 +131,17 @@ int main(void)
 		shiftArray(Px);
 		shiftArray(Tx);
 	}
-	appendAxData(&MPU6050, Ax, Tx, data_index, timeTracking.initial, timeTracking.current);	//converts to m/s^2 and stores in Ax
+	appendAxData(&MPU6050, Ax, Tx, data_index, timeTracking.initial, timeTracking.current, slope);	//converts to m/s^2 and stores in Ax
 	calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
 	calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
 
-	printf("Ax: %imm/s^2 - Vx: %imm/s - Px: %imm             \r", (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
+	printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[1]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
 
 	if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
 	else                              shift=1; //if the array is full, start shifting
+
+	//delete this block after test
+	if((Tx[data_index]-Tx[data_index-1])>0.05)	printf("\n\rdt=%ims\n\r", (int)((Tx[data_index]-Tx[data_index-1])*1000));
 
   }
   /* USER CODE END 3 */

@@ -108,6 +108,7 @@ stick_t stick = {
 	.xDirection = RIGHT,
 	.yDirection = DOWN
 };
+int ballVelocityDelay = 0;
 /* USER CODE END 0 */
 
 /**
@@ -148,6 +149,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim10);
   HAL_TIM_Base_Start_IT(&htim11);
+  HAL_TIM_Base_Start_IT(&htim13);
   HAL_TIM_Base_Start_IT(&htim14);
 
   lcd5110_init();
@@ -212,25 +214,31 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	if (htim->Instance == TIM10) {
-	}
-	if (htim->Instance == TIM11) {
+	if (htim->Instance == TIM10) {  //20Hz stick speed
 		moveStick();
 	}
-	if (htim->Instance == TIM13	) { //100Hz atualização da colisão
-	}
-	if (htim->Instance == TIM14) { //50Hz atualização da tela
-		lcd5110_clear();
-
+	if (htim->Instance == TIM11) {  //10Hz ball speed
 		moveBall();
 		checkCollision();
+
+		if (htim->Init.Period == 1679) {
+			if (ballVelocityDelay == 50) {
+				__HAL_TIM_SET_AUTORELOAD(&htim11, 4199);
+				ballVelocityDelay = 0;
+			} else ballVelocityDelay++;
+		}
+	}
+	if (htim->Instance == TIM13	) { //30Hz
+	}
+	if (htim->Instance == TIM14) {  //50Hz atualização da tela
+		lcd5110_clear();
+
 		drawBall();
 		drawStick();
 
 		lcd5110_refresh();
 	}
 }
-
 
 void checkCollision() {
 	int p = stick.yPosition - (stick.height / 2) - 1,
@@ -239,10 +247,27 @@ void checkCollision() {
 		s = stick.xPosition + (stick.width / 2) + 1;
 	int x = ball.xPosition, y = ball.yPosition;
 
-	if ((y > p) && (y < q) && (x == r) && (ball.xDirection == RIGHT)) ball.xDirection = !(ball.xDirection); //hit from left
-	if ((y > p) && (y < q) && (x == s) && (ball.xDirection == LEFT)) ball.xDirection = !(ball.xDirection); //hit from right
-	if ((x > r) && (x < s) && (y == q) && (ball.yDirection == UP)) ball.yDirection = !(ball.yDirection); //hit from bellow
-	if ((x > r) && (x < s) && (y == p) && (ball.yDirection == DOWN)) ball.yDirection = !(ball.yDirection); //hit from above
+
+	if ((y > p) && (y < q) && (x == r) && (ball.xDirection == RIGHT)) { //hit from left
+		ball.xDirection = !(ball.xDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
+	if ((y > p) && (y < q) && (x == s) && (ball.xDirection == LEFT)) { //hit from right
+		ball.xDirection = !(ball.xDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
+	if ((x > r) && (x < s) && (y == q) && (ball.yDirection == UP)) { //hit from bellow
+		ball.yDirection = !(ball.yDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
+	if ((x > r) && (x < s) && (y == p) && (ball.yDirection == DOWN)) { //hit from above
+		ball.yDirection = !(ball.yDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
 
 	//diagonals
 	if ((x == r) && (y == q) && (ball.xDirection == RIGHT) && (ball.yDirection == UP)) { //bottom left
@@ -264,17 +289,17 @@ void checkCollision() {
 }
 
 void moveStick() {
-	if ((stick.yPosition + (stick.height/2) + 2) >= MAX_Y) stick.yDirection = UP;
-	if ((stick.yPosition - (stick.height/2) - 2) <= MIN_Y) stick.yDirection = DOWN;
-
-	if (!stick.yDirection) stick.yPosition = ++stick.yPosition;
-	else stick.yPosition = --stick.yPosition;
-
-//	if (stick.xPosition >= MAX_X) stick.xDirection = LEFT;
-//	if (stick.xPosition <= MIN_X) stick.xDirection = RIGHT;
+//	if ((stick.yPosition + (stick.height/2) + 2) >= MAX_Y) stick.yDirection = UP;
+//	if ((stick.yPosition - (stick.height/2) - 2) <= MIN_Y) stick.yDirection = DOWN;
 //
-//	if (!stick.xDirection) stick.xPosition = ++stick.xPosition;
-//	else stick.xPosition = --stick.xPosition;
+//	if (!stick.yDirection) stick.yPosition = ++stick.yPosition;
+//	else stick.yPosition = --stick.yPosition;
+
+	if (stick.xPosition >= MAX_X) stick.xDirection = LEFT;
+	if (stick.xPosition <= MIN_X) stick.xDirection = RIGHT;
+
+	if (!stick.xDirection) stick.xPosition = ++stick.xPosition;
+	else stick.xPosition = --stick.xPosition;
 }
 
 void moveBall() {

@@ -5,3 +5,5 @@ When the sensor accelerates then stops, the speed went back to ~0.032m/s instead
 Position grew to ~47cm, which is about what it actualy moved. On the other hand, when it was pulled back, Px decreases to only ~15cm instead of 0cm. Maybe this was because of the speed offset. Sigmoid and square filters will be applied.
 
 ps: don't mind the spikes to zero - they're just there because CubeMonitor reads data between array shifting and the next measurement.
+
+Sources: "MPU6050 Register Map and Descriptions" and "Using the MPU6050’s DLPF" (both available in this repository)

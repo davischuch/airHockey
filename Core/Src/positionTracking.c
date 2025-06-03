@@ -2,10 +2,10 @@
 #include "mpu6050.h"
 #include <math.h>
 
-void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *timeArray, int index, double initial_time, double current_time, double *slope);
-void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *current_time, double *slope, MPU6050_t *DataStruct, I2C_HandleTypeDef *i2c);
+void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *timeArray, int index, double *slope);
+void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *slope, MPU6050_t *DataStruct, I2C_HandleTypeDef *i2c);
 
-void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *timeArray, int index, double initial_time, double current_time, double *slope){
+void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *timeArray, int index, double *slope){
 	//filter influence of gravity in Ax
     double realA;
     realA = cos(slope[0]) * (DataStruct->Ax + sin(slope[0]));
@@ -13,7 +13,12 @@ void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *time
 
     accelerationArray[index] = realA;
 
-    timeArray[index] = current_time-initial_time; //ps: current time is overwritten right after the mesurement in "MPU6050_Read_Accel"
+    if(index==0){
+		timeArray[index]=0;
+	}
+    else{
+    	timeArray[index] = timeArray[index-1]+0.03; //next time is 30ms later
+    }
 }
 
 void calculateVx(double *accelerationArray, double *velocityArray, double *timeArray, int index){   
@@ -30,13 +35,13 @@ void calculatePx(double *velocityArray, double *positionArray, double *timeArray
     positionArray[index] = velocityArray[index-1] * (timeArray[index]-timeArray[index-1]) + positionArray[index-1];
 }
 
-void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *current_time, double *slope, MPU6050_t *DataStruct, I2C_HandleTypeDef *i2c){
-    double *placeHolder, gravity;
+void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *slope, MPU6050_t *DataStruct, I2C_HandleTypeDef *i2c){
+    double gravity;
     double averageAx=0;
 
 	//Kalman filter algorithm requires some time to stabilize
     for (int i = 0; i < 2000; i++) {
-        MPU6050_Read_All(i2c, DataStruct, &placeHolder);
+        MPU6050_Read_All(i2c, DataStruct);
         HAL_Delay(1);
     }
     slope[1] = DataStruct->KalmanAngleX*DEG_TO_RAD;
@@ -51,7 +56,6 @@ void calibrate(double *accelerationArray, double *velocityArray, double *positio
     }
 
     *data_index = 0;
-    *current_time = (double)(HAL_GetTick())/1000;    //initialize the time tracking
 }
 
 void shiftArray(double *array){

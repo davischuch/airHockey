@@ -19,6 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "i2c.h"
+#include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -48,14 +50,7 @@ char CMD;
 /* USER CODE BEGIN PV */
 MPU6050_t MPU6050;
 
-struct positionTracking_t
-{
-    double initial;
-    double current;
-};
-struct positionTracking_t timeTracking;
-
-int data_index, shift=0;    //variable to keep track of the number of elements in the arrays
+int data_index, shift=0, read=0;    //variable to keep track of the number of elements in the arrays
 double Ax[DATA_ARRAY_SIZE]; //array to store x axis acceleration
 double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
 double Px[DATA_ARRAY_SIZE]; //array to store x axis position
@@ -82,7 +77,6 @@ int _write(int file, uint8_t* p, int len);
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -105,26 +99,31 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
+  MX_SPI2_Init();
+  MX_TIM10_Init();
+  MX_TIM11_Init();
+  MX_TIM14_Init();
+  MX_TIM13_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);
 
   printf("\n\n\rCalibration in progress\n\rPlease STAY STILL!!!\n\r");
-  calibrate(Ax, Vx, Px, Tx, &data_index, &timeTracking.initial, slope, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
+  calibrate(Ax, Vx, Px, Tx, &data_index, slope, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
   printf("Calibration done\n\r");
+
+  HAL_TIM_Base_Start_IT(&htim7);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-	while((double)(HAL_GetTick())/1000 - timeTracking.current < 0.05); //wait for 50ms before the next measurement
-  MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
+	while(!read);	//read each 30ms
+	MPU6050_Read_Accel(&hi2c1, &MPU6050);
 
 	if(shift){ //if the array is not full, do not shift
 		shiftArray(Ax);	//shifts the array to the left
@@ -132,14 +131,19 @@ int main(void)
 		shiftArray(Px);
 		shiftArray(Tx);
 	}
-	appendAxData(&MPU6050, Ax, Tx, data_index, timeTracking.initial, timeTracking.current, slope);	//converts to m/s^2 and stores in Ax
+	appendAxData(&MPU6050, Ax, Tx, data_index, slope);	//converts to m/s^2 and stores in Ax
 	calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
 	calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
 
-	printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[0]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
+	//printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[0]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
 
 	if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
 	else                              shift=1; //if the array is full, start shifting
+	read=0;
+
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
 
   }
   /* USER CODE END 3 */
@@ -205,6 +209,12 @@ int _write(int file, uint8_t* p, int len)
 		return len;
 	}
 	return 0;
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Instance == TIM7) {
+		read=1;
+	}
 }
 /* USER CODE END 4 */
 

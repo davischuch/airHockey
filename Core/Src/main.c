@@ -123,6 +123,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	while((double)(HAL_GetTick())/1000 - timeTracking.current < 0.05); //wait for 50ms before the next measurement
   MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
 
 	if(shift){ //if the array is not full, do not shift

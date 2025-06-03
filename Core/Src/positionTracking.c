@@ -17,7 +17,7 @@ void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *time
 		timeArray[index]=0;
 	}
     else{
-    	timeArray[index] = timeArray[index-1]+0.03; //next time is 30ms later
+    	timeArray[index] = timeArray[index-1]+0.001; //next time is 1ms later
     }
 }
 
@@ -36,9 +36,6 @@ void calculatePx(double *velocityArray, double *positionArray, double *timeArray
 }
 
 void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *slope, MPU6050_t *DataStruct, I2C_HandleTypeDef *i2c){
-    double gravity;
-    double averageAx=0;
-
 	//Kalman filter algorithm requires some time to stabilize
     for (int i = 0; i < 2000; i++) {
         MPU6050_Read_All(i2c, DataStruct);

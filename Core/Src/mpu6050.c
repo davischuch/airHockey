@@ -35,14 +35,17 @@
 
 #define RAD_TO_DEG 57.295779513082320876798154814105
 
-#define WHO_AM_I_REG 0x75
-#define PWR_MGMT_1_REG 0x6B
-#define SMPLRT_DIV_REG 0x19
-#define ACCEL_CONFIG_REG 0x1C
-#define ACCEL_XOUT_H_REG 0x3B
-#define TEMP_OUT_H_REG 0x41
-#define GYRO_CONFIG_REG 0x1B
-#define GYRO_XOUT_H_REG 0x43
+#define WHO_AM_I_REG       0x75
+#define PWR_MGMT_1_REG     0x6B
+#define SMPLRT_DIV_REG     0x19
+#define ACCEL_CONFIG_REG   0x1C
+#define ACCEL_XOUT_H_REG   0x3B
+#define TEMP_OUT_H_REG     0x41
+#define GYRO_CONFIG_REG    0x1B
+#define GYRO_XOUT_H_REG    0x43
+
+#define CONFIG_REG         0x1A	//not from the author
+
 
 // Setup MPU6050
 #define MPU6050_ADDR 0xD0
@@ -67,18 +70,22 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx)
     uint8_t check;
     uint8_t Data;
 
-    // check device ID WHO_AM_I
-
+    // Check device ID
     HAL_I2C_Mem_Read(I2Cx, MPU6050_ADDR, WHO_AM_I_REG, 1, &check, 1, i2c_timeout);
 
-    if (check == 104) // 0x68 will be returned by the sensor if everything goes well
+    if (check == 104) // 0x68
     {
-        // power management register 0X6B we should write all 0's to wake the sensor up
-        Data = 0;
+    	// power management register 0X6B we should write all 0's to wake the sensor up
+    	Data = 0;
         HAL_I2C_Mem_Write(I2Cx, MPU6050_ADDR, PWR_MGMT_1_REG, 1, &Data, 1, i2c_timeout);
 
-        // Set DATA RATE of 1KHz by writing SMPLRT_DIV register
-        Data = 0x07;
+        //this block was written by us, not the author
+        // Digital low-pass filter (DLPF_CFG = 2 → 94 Hz bandwidth)
+        Data = 0x02;
+        HAL_I2C_Mem_Write(I2Cx, MPU6050_ADDR, CONFIG_REG, 1, &Data, 1, i2c_timeout);
+
+        // Set DATA RATE of 8KHz by writing SMPLRT_DIV register - original (by the author) was data = 0x07 (1kHz)
+        Data = 0x00;
         HAL_I2C_Mem_Write(I2Cx, MPU6050_ADDR, SMPLRT_DIV_REG, 1, &Data, 1, i2c_timeout);
 
         // Set accelerometer configuration in ACCEL_CONFIG Register
@@ -90,10 +97,13 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx)
         // XG_ST=0,YG_ST=0,ZG_ST=0, FS_SEL=0 -> � 250 �/s
         Data = 0x00;
         HAL_I2C_Mem_Write(I2Cx, MPU6050_ADDR, GYRO_CONFIG_REG, 1, &Data, 1, i2c_timeout);
+
         return 0;
     }
+
     return 1;
 }
+
 
 void MPU6050_Read_Accel(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct)
 {

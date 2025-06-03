@@ -122,7 +122,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	while(!read);	//read each 30ms
+	while(!read);	//read each 1ms
 	MPU6050_Read_Accel(&hi2c1, &MPU6050);
 
 	if(shift){ //if the array is not full, do not shift

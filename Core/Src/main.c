@@ -55,7 +55,11 @@ double Ax[DATA_ARRAY_SIZE]; //array to store x axis acceleration
 double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
 double Px[DATA_ARRAY_SIZE]; //array to store x axis position
 
-double Tx[DATA_ARRAY_SIZE]; //array to store time
+double Ay[DATA_ARRAY_SIZE];
+double Vy[DATA_ARRAY_SIZE];
+double Py[DATA_ARRAY_SIZE];
+
+double timeTracking[DATA_ARRAY_SIZE]; //array to store time
 
 double slope[2];	//slope[0] is the Y-axis slope, and slope[1] is the X-axis
 /* USER CODE END PV */
@@ -112,7 +116,7 @@ int main(void)
   while (MPU6050_Init(&hi2c1) == 1);
 
   printf("\n\n\rCalibration in progress\n\rPlease STAY STILL!!!\n\r");
-  calibrate(Ax, Vx, Px, Tx, &data_index, slope, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
+  calibrate(Ax, Vx, Px, Ay, Vy, Py, timeTracking, &data_index, slope, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
   printf("Calibration done\n\r");
 
   HAL_TIM_Base_Start_IT(&htim7);
@@ -129,11 +133,18 @@ int main(void)
 		shiftArray(Ax);	//shifts the array to the left
 		shiftArray(Vx);
 		shiftArray(Px);
-		shiftArray(Tx);
+    shiftArray(Ay);
+		shiftArray(Vy);
+		shiftArray(Py);
+		shiftArray(timeTracking);
 	}
-	appendAxData(&MPU6050, Ax, Tx, data_index, slope);	//converts to m/s^2 and stores in Ax
-	calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
-	calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
+	appendAccelerationData(&MPU6050, Ax, timeTracking, data_index, slope[0], 'x');	//converts to m/s^2 and stores in Ax
+	calculateVelocity(Ax, Vx, timeTracking, data_index);	//calculates velocity based on acceleration data
+	calculatePosition(Vx, Px, timeTracking, data_index);	//calculates position based on velocity data
+
+  appendAccelerationData(&MPU6050, Ay, timeTracking, data_index, slope[1], 'y');
+  calculateVelocity(Ay, Vy, timeTracking, data_index);
+  calculatePosition(Vy, Py, timeTracking, data_index);
 
 	//printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[0]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
 

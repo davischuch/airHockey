@@ -123,7 +123,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	MPU6050_Read_All(&hi2c1, &MPU6050, &timeTracking.current);
+  MPU6050_Read_Accel(&hi2c1, &MPU6050, &timeTracking.current);
 
 	if(shift){ //if the array is not full, do not shift
 		shiftArray(Ax);	//shifts the array to the left
@@ -135,13 +135,10 @@ int main(void)
 	calculateVx(Ax, Vx, Tx, data_index);	//calculates velocity based on acceleration data
 	calculatePx(Vx, Px, Tx, data_index);	//calculates position based on velocity data
 
-	printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[1]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
+	printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[0]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
 
 	if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
 	else                              shift=1; //if the array is full, start shifting
-
-	//delete this block after test
-	if((Tx[data_index]-Tx[data_index-1])>0.05)	printf("\n\rdt=%ims\n\r", (int)((Tx[data_index]-Tx[data_index-1])*1000));
 
   }
   /* USER CODE END 3 */

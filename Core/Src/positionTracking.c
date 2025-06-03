@@ -6,19 +6,21 @@ void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *time
 void calibrate(double *accelerationArray, double *velocityArray, double *positionArray, double *timeArray, int *data_index, double *slope, MPU6050_t *DataStruct, I2C_HandleTypeDef *i2c);
 
 void appendAxData(MPU6050_t *DataStruct, double *accelerationArray, double *timeArray, int index, double *slope){
-	//filter influence of gravity in Ax
-    double realA;
-    realA = cos(slope[0]) * (DataStruct->Ax + sin(slope[0]));
-    realA *= G_TO_MS2; //convert to m/s^2
-
-    accelerationArray[index] = realA;
-
     if(index==0){
 		timeArray[index]=0;
 	}
     else{
     	timeArray[index] = timeArray[index-1]+0.001; //next time is 1ms later
     }
+
+	//filter influence of gravity in Ax
+    double realA;
+    realA = cos(slope[0]) * (DataStruct->Ax + sin(slope[0]));
+    realA *= G_TO_MS2; //convert to m/s^2
+
+    if(fabs(realA)<0.1)	return;
+
+    accelerationArray[index] = realA;
 }
 
 void calculateVx(double *accelerationArray, double *velocityArray, double *timeArray, int index){   
@@ -26,6 +28,12 @@ void calculateVx(double *accelerationArray, double *velocityArray, double *timeA
 
 	//calculate velocity based on acceleration data
     velocityArray[index] = accelerationArray[index-1] * (timeArray[index]-timeArray[index-1]) + velocityArray[index-1];
+
+    //if all accelerations are zero, set velocity to zero
+    for(int i=DATA_ARRAY_SIZE-1; i>=0; i--){
+    	if(accelerationArray[i]!=0)	return;
+    }
+    velocityArray[index] = 0;
 }
 
 void calculatePx(double *velocityArray, double *positionArray, double *timeArray, int index){

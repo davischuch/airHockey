@@ -10,7 +10,7 @@
 
 #include "i2c.h"
 
-#define DATA_ARRAY_SIZE 2 //define the size of the arrays
+#define DATA_ARRAY_SIZE 30 //define the size of the arrays
 #define G_TO_MS2 9.79274 //define the conversion factor from g to m/s^2
 #define DEG_TO_RAD 0.01745329251994329576923690768489 //define the conversion factor from degrees to radians
 

@@ -51,6 +51,9 @@ char CMD;
 MPU6050_t MPU6050;
 
 int data_index, shift=0, read=0;    //variable to keep track of the number of elements in the arrays
+
+double slopeY, slopeX;
+
 double Ax[DATA_ARRAY_SIZE]; //array to store x axis acceleration
 double Vx[DATA_ARRAY_SIZE]; //array to store x axis velocity
 double Px[DATA_ARRAY_SIZE]; //array to store x axis position
@@ -60,8 +63,6 @@ double Vy[DATA_ARRAY_SIZE];
 double Py[DATA_ARRAY_SIZE];
 
 double timeTracking[DATA_ARRAY_SIZE]; //array to store time
-
-double slope[2];	//slope[0] is the Y-axis slope, and slope[1] is the X-axis
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,44 +114,46 @@ int main(void)
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
-  while (MPU6050_Init(&hi2c1) == 1);
+  while (MPU6050_Init(&hi2c1) == 1);  //wait positive answer from MPU6050 and correct initialization
 
+  //initial calibration of the sensor (it has to be at rest)
   printf("\n\n\rCalibration in progress\n\rPlease STAY STILL!!!\n\r");
-  calibrate(Ax, Vx, Px, Ay, Vy, Py, timeTracking, &data_index, slope, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
+  calibrate(Ax, Vx, Px, Ay, Vy, Py, timeTracking, &data_index, &slopeY, &slopeX, &MPU6050, &hi2c1);
   printf("Calibration done\n\r");
 
-  HAL_TIM_Base_Start_IT(&htim7);
+  HAL_TIM_Base_Start_IT(&htim7);  //start timer to read data from MPU6050 every 1ms
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	while(!read);	//read each 1ms
-	MPU6050_Read_Accel(&hi2c1, &MPU6050);
+    while(!read);	//read each 1ms
+    MPU6050_Read_Accel(&hi2c1, &MPU6050);
 
-	if(shift){ //if the array is not full, do not shift
-		shiftArray(Ax);	//shifts the array to the left
-		shiftArray(Vx);
-		shiftArray(Px);
-    shiftArray(Ay);
-		shiftArray(Vy);
-		shiftArray(Py);
-		shiftArray(timeTracking);
-	}
-	appendAccelerationData(&MPU6050, Ax, timeTracking, data_index, slope[0], 'x');	//converts to m/s^2 and stores in Ax
-	calculateVelocity(Ax, Vx, timeTracking, data_index);	//calculates velocity based on acceleration data
-	calculatePosition(Vx, Px, timeTracking, data_index);	//calculates position based on velocity data
+    if(shift){ //if the array is not full, do not shift
+      shiftArray(Ax);	//shifts the array to the left
+      shiftArray(Vx);
+      shiftArray(Px);
+      shiftArray(Ay);
+      shiftArray(Vy);
+      shiftArray(Py);
+      shiftArray(timeTracking);
+    }
+    appendAccelerationData(&MPU6050, Ax, timeTracking, data_index, slopeY, 'x');	//filter, convert to m/s^2 and append acceleration data to the array
+    calculateVelocity(Ax, Vx, timeTracking, data_index);	//calculates and filters velocity based on acceleration data
+    calculatePosition(Vx, Px, timeTracking, data_index);	//calculates position based on velocity data
 
-  appendAccelerationData(&MPU6050, Ay, timeTracking, data_index, slope[1], 'y');
-  calculateVelocity(Ay, Vy, timeTracking, data_index);
-  calculatePosition(Vy, Py, timeTracking, data_index);
+    appendAccelerationData(&MPU6050, Ay, timeTracking, data_index, slopeX, 'y');
+    calculateVelocity(Ay, Vy, timeTracking, data_index);
+    calculatePosition(Vy, Py, timeTracking, data_index);
 
-	//printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[0]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000));
+    //printf("slopeY: %i, Ax: %imm/s^2, Vx: %imm/s, Px: %imm,                 \r", (int)(slope[0]*1000), (int)(Ax[data_index]*1000), (int)(Vx[data_index]*1000), (int)(Px[data_index]*1000)); //print slopeY, acceleration, velocity and position data (X axis)
 
-	if(data_index<DATA_ARRAY_SIZE-1)  data_index++;
-	else                              shift=1; //if the array is full, start shifting
-	read=0;
+    if(data_index<DATA_ARRAY_SIZE-1)  data_index++; //if the array is not full, append data to the next index
+    else                              shift=1;      //if the array is full, start shifting it and appending data to the last index
+    
+    read=0; //reset read flag
 
     /* USER CODE END WHILE */
 
@@ -224,7 +227,7 @@ int _write(int file, uint8_t* p, int len)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM7) {
-		read=1;
+		read=1; //set read flag to 1 to read data from MPU6050 after 1ms
 	}
 }
 /* USER CODE END 4 */

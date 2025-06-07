@@ -31,6 +31,9 @@ O seguinte projeto implementa uma adaptação de um jogo de air hockey para o â
 - Display Nokia LCD 5110
 - Comunicação serial SPI, para o display, e I2C, para o acelerometro
 
+## Diagrama Esquemático
+![schAirHockey](./assets/schAirHockey.png)
+
 ## SPI
 O protocolo SPI é um método de comunicação serial utilizado em curtas distâncias, utilizado principalmente para sistemas embarcados. A comunicação funciona em um sistema Mestre-Escravo, o que significa que o gerador do sinal de sincronismo é definido como mestre e todos os dispositivos que utilizam desse sinal para sincronização são chamados de escravos.
 O protocolo também funciona com um canal Full Duplex, capaz de enviar e receber dados simultaneamente, Half Duplex, e Uniplex, somente transmitindo ou somente recebendo dados.

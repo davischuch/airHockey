@@ -27,6 +27,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lcd5110.h"
+#include "mpu6050.h"
+#include "positionTracking.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,66 +43,83 @@ enum {
 	LEFT
 };
 
+//create object structure for ball and stick
 typedef struct {
 	int width;
 	int height;
 	int xPosition;
 	int yPosition;
-	int xDirection;
-	int yDirection;
-} ball_t;
+	int xDirection; //enum left or right
+	int yDirection; //enum um or down
+} object_t;
 
-typedef struct {
-	int width;
-	int height;
-	int xPosition;
-	int yPosition;
-	int xDirection;
-	int yDirection;
-} stick_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+//set the dimensions of the display
 #define MIN_X 2
 #define MAX_X 82
 #define MIN_Y 2
 #define MAX_Y 46
+
+#define TOUT 100 //timeout for the serial message
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+char CMD;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+MPU6050_t MPU6050; //create mpu values struct
 
+int data_index, shift = 0, read = 0; //variable to keep track of the number of elements in the arrays
+double Ax[DATA_ARRAY_SIZE];          //array to store x axis acceleration
+double Vx[DATA_ARRAY_SIZE];          //array to store x axis velocity
+double Px[DATA_ARRAY_SIZE];          //array to store x axis position
+
+double Ay[DATA_ARRAY_SIZE];
+double Vy[DATA_ARRAY_SIZE];
+double Py[DATA_ARRAY_SIZE];
+
+double timeTracking[DATA_ARRAY_SIZE]; //array to store time
+
+double slope[2]; //slope[0] is the Y-axis slope, and slope[1] is the X-axis
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
+//create game prototypes
 void checkCollision();
 void moveBall();
 void moveStick();
 void drawBall();
 void drawStick();
+
+//create serial print function
+int _write(int file, uint8_t* p, int len);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-ball_t ball = {
+
+//initiate default values
+object_t ball = {
 	.width = 4,
 	.height = 4,
-	.xPosition = 1,
+	.xPosition = 80,
 	.yPosition = 1,
 	.xDirection = RIGHT,
 	.yDirection = DOWN
 };
 
-stick_t stick = {
+object_t stick = {
 	.width = 10,
 	.height = 30,
 	.xPosition = MAX_X / 2,
@@ -108,6 +127,8 @@ stick_t stick = {
 	.xDirection = RIGHT,
 	.yDirection = DOWN
 };
+
+//aux variable for velocity change
 int ballVelocityDelay = 0;
 /* USER CODE END 0 */
 
@@ -146,18 +167,62 @@ int main(void)
   MX_TIM11_Init();
   MX_TIM14_Init();
   MX_TIM13_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
+  HAL_UART_Receive_IT(&huart2, &CMD, 1);
+
+  //wait positive answer from MPU6050 and correct initialization
+  while (MPU6050_Init(&hi2c1) == 1); 
+
+  //configures lcd
+  lcd5110_init();
+
+  //initial calibration of the sensor (it has to be at rest)
+  printf("\n\n\rCalibration in progress\n\rPlease STAY STILL!!!\n\r");
+  lcd5110_clear();
+  lcd5110_box(MAX_X/2, MAX_Y/2, MAX_X, MAX_Y);
+  lcd5110_refresh();
+
+  calibrate(Ax, Vx, Px, Ay, Vy, Py, timeTracking, &data_index, slope, &MPU6050, &hi2c1);  //initial calibration of the sensor (it has to be at rest)
+
+  printf("Calibration done\n\r");
+  lcd5110_clear();
+  lcd5110_refresh();
+
+  HAL_TIM_Base_Start_IT(&htim7);
   HAL_TIM_Base_Start_IT(&htim10);
   HAL_TIM_Base_Start_IT(&htim11);
   HAL_TIM_Base_Start_IT(&htim13);
   HAL_TIM_Base_Start_IT(&htim14);
 
-  lcd5110_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
+	  while(!read);	//read each 1ms
+	  	MPU6050_Read_Accel(&hi2c1, &MPU6050);
+
+	  	if(shift){ //if the array is not full, do not shift
+	  		shiftArray(Ax);	//shifts the array to the left
+	  		shiftArray(Vx);
+	  		shiftArray(Px);
+	        shiftArray(Ay);
+	  		shiftArray(Vy);
+	  		shiftArray(Py);
+	  		shiftArray(timeTracking);
+	  	}
+	  	appendAccelerationData(&MPU6050, Ax, timeTracking, data_index, slope[0], 'x');	//filter, convert to m/s^2 and append acceleration data to the array
+	  	calculateVelocity(Ax, Vx, timeTracking, data_index); //calculates and filters velocity based on acceleration data
+	  	calculatePosition(Vx, Px, timeTracking, data_index); //calculates position based on velocity data
+
+	    appendAccelerationData(&MPU6050, Ay, timeTracking, data_index, slope[1], 'y');
+	    calculateVelocity(Ay, Vy, timeTracking, data_index);
+	    calculatePosition(Vy, Py, timeTracking, data_index);
+
+	  	if(data_index<DATA_ARRAY_SIZE-1)  data_index++; //if the array is not full, append data to the next index
+	  	else                              shift=1; //if the array is full, start shifting
+	  	read=0; //reset read flag
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -213,6 +278,20 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	HAL_UART_Transmit(&huart2, &CMD, 1, TOUT);
+	HAL_UART_Receive_IT(&huart2, &CMD, 1);
+}
+
+int _write(int file, uint8_t* p, int len)
+{
+	if(HAL_UART_Transmit(&huart2, p, len, len) == HAL_OK )
+	{
+		return len;
+	}
+	return 0;
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM10) {  //20Hz stick speed
 		moveStick();
@@ -221,14 +300,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		moveBall();
 		checkCollision();
 
-		if (htim->Init.Period == 1679) {
-			if (ballVelocityDelay == 50) {
-				__HAL_TIM_SET_AUTORELOAD(&htim11, 4199);
+		if (htim->Init.Period == 1679) { //if its currently in 50 Hz
+			if (ballVelocityDelay == 50) { //stay like this for one second
+				__HAL_TIM_SET_AUTORELOAD(&htim11, 4199); //change back to 10 Hz
 				ballVelocityDelay = 0;
 			} else ballVelocityDelay++;
 		}
-	}
-	if (htim->Instance == TIM13	) { //30Hz
 	}
 	if (htim->Instance == TIM14) {  //50Hz atualização da tela
 		lcd5110_clear();
@@ -238,13 +315,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 		lcd5110_refresh();
 	}
+	if (htim->Instance == TIM7) read = 1; //timer to read data from MPU6050 every 1ms
 }
 
 void checkCollision() {
-	int p = stick.yPosition - (stick.height / 2) - 1,
-		q = stick.yPosition + (stick.height / 2) + 1,
-		r = stick.xPosition - (stick.width / 2) - 1,
-		s = stick.xPosition + (stick.width / 2) + 1;
+	int p = stick.yPosition - (stick.height / 2) - 1, //get top position
+		q = stick.yPosition + (stick.height / 2) + 1, //get bottom position
+		r = stick.xPosition - (stick.width / 2) - 1,  //get right position
+		s = stick.xPosition + (stick.width / 2) + 1;  //get left position
 	int x = ball.xPosition, y = ball.yPosition;
 
 
@@ -289,29 +367,28 @@ void checkCollision() {
 }
 
 void moveStick() {
-//	if ((stick.yPosition + (stick.height/2) + 2) >= MAX_Y) stick.yDirection = UP;
-//	if ((stick.yPosition - (stick.height/2) - 2) <= MIN_Y) stick.yDirection = DOWN;
-//
-//	if (!stick.yDirection) stick.yPosition = ++stick.yPosition;
-//	else stick.yPosition = --stick.yPosition;
+	int x = - (Py[28] * 100); //get instant position and change to decimal
+	int y = - (Px[28] * 100); // ||
 
-	if (stick.xPosition >= MAX_X) stick.xDirection = LEFT;
-	if (stick.xPosition <= MIN_X) stick.xDirection = RIGHT;
-
-	if (!stick.xDirection) stick.xPosition = ++stick.xPosition;
-	else stick.xPosition = --stick.xPosition;
+	//sensibility configuration
+	stick.xPosition = 10 + (x);
+	stick.yPosition = (MAX_Y/2) + (y * 2);
 }
 
 void moveBall() {
 	checkCollision();
+
+	//change direction if it hits the corners of the display
 	if (ball.xPosition >= MAX_X) ball.xDirection = LEFT;
 	if (ball.xPosition <= MIN_X) ball.xDirection = RIGHT;
 	if (ball.yPosition >= MAX_Y) ball.yDirection = UP;
 	if (ball.yPosition <= MIN_Y) ball.yDirection = DOWN;
 
+	//increase x position moving right, decrease moving left
 	if (!ball.xDirection) ball.xPosition = ++ball.xPosition;
 	else ball.xPosition = --ball.xPosition;
 
+	//increase y position moving down, decrease moving up 
 	if (!ball.yDirection) ball.yPosition = ++ball.yPosition;
 	else ball.yPosition = --ball.yPosition;
 }

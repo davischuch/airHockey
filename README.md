@@ -5,6 +5,7 @@ Sistemas Microprocessados II - Professor Marcos Zuccolotto
 ## Sumário
 - [Briefing](#briefing)
     - [Tecnologias Utilizadas](#tecnologias-utilizadas)
+    - [Diagrama Esquemático](#diagrama-esquemático)
 - [SPI](#spi)
     - [Pinos](#pinos)
     - [Shift Register / Modos de Operação](#shift-register--modos-de-operação)

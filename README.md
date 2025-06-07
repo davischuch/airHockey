@@ -31,7 +31,7 @@ O seguinte projeto implementa uma adaptação de um jogo de air hockey para o â
 - Display Nokia LCD 5110
 - Comunicação serial SPI, para o display, e I2C, para o acelerometro
 
-## Diagrama Esquemático
+### Diagrama Esquemático
 ![schAirHockey](./assets/schAirHockey.png)
 
 ## SPI

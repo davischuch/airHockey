@@ -26,23 +26,53 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "lcd5110.h"
 #include "mpu6050.h"
 #include "positionTracking.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+enum {
+	DOWN = 0,
+	UP
+};
 
+enum {
+	RIGHT = 0,
+	LEFT
+};
+
+typedef struct {
+	int width;
+	int height;
+	int xPosition;
+	int yPosition;
+	int xDirection;
+	int yDirection;
+} ball_t;
+
+typedef struct {
+	int width;
+	int height;
+	int xPosition;
+	int yPosition;
+	int xDirection;
+	int yDirection;
+} stick_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TOUT 100
+#define MIN_X 2
+#define MAX_X 82
+#define MIN_Y 2
+#define MAX_Y 46
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-char CMD;
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -68,12 +98,34 @@ double timeTracking[DATA_ARRAY_SIZE]; //array to store time
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+void checkCollision();
+void moveBall();
+void moveStick();
+void drawBall();
+void drawStick();
 int _write(int file, uint8_t* p, int len);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+ball_t ball = {
+	.width = 4,
+	.height = 4,
+	.xPosition = 1,
+	.yPosition = 1,
+	.xDirection = RIGHT,
+	.yDirection = DOWN
+};
 
+stick_t stick = {
+	.width = 10,
+	.height = 30,
+	.xPosition = MAX_X / 2,
+	.yPosition = MAX_Y / 2,
+	.xDirection = RIGHT,
+	.yDirection = DOWN
+};
+int ballVelocityDelay = 0;
 /* USER CODE END 0 */
 
 /**
@@ -107,12 +159,20 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_SPI2_Init();
+  MX_TIM7_Init();
   MX_TIM10_Init();
   MX_TIM11_Init();
   MX_TIM14_Init();
   MX_TIM13_Init();
-  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
+    HAL_TIM_Base_Start_IT(&htim10);
+  HAL_TIM_Base_Start_IT(&htim11);
+  HAL_TIM_Base_Start_IT(&htim13);
+  HAL_TIM_Base_Start_IT(&htim14);
+  HAL_TIM_Base_Start_IT(&htim7); 
+
+  lcd5110_init();
+  
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
   while (MPU6050_Init(&hi2c1) == 1);  //wait positive answer from MPU6050 and correct initialization
 
@@ -121,7 +181,6 @@ int main(void)
   calibrate(Ax, Vx, Px, Ay, Vy, Py, timeTracking, &data_index, &slopeY, &slopeX, &MPU6050, &hi2c1);
   printf("Calibration done\n\r");
 
-  HAL_TIM_Base_Start_IT(&htim7);  //start timer to read data from MPU6050 every 1ms
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -158,7 +217,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
   }
   /* USER CODE END 3 */
 }
@@ -211,9 +269,115 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	HAL_UART_Transmit(&huart2, &CMD, 1, TOUT);
-	HAL_UART_Receive_IT(&huart2, &CMD, 1);
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Instance == TIM10) {  //20Hz stick speed
+		moveStick();
+	}
+	if (htim->Instance == TIM11) {  //10Hz ball speed
+		moveBall();
+		checkCollision();
+
+		if (htim->Init.Period == 1679) {
+			if (ballVelocityDelay == 50) {
+				__HAL_TIM_SET_AUTORELOAD(&htim11, 4199);
+				ballVelocityDelay = 0;
+			} else ballVelocityDelay++;
+		}
+	}
+	if (htim->Instance == TIM13	) { //30Hz
+	}
+	if (htim->Instance == TIM14) {  //50Hz atualização da tela
+		lcd5110_clear();
+
+		drawBall();
+		drawStick();
+
+		lcd5110_refresh();
+	}
+}
+
+void checkCollision() {
+	int p = stick.yPosition - (stick.height / 2) - 1,
+		q = stick.yPosition + (stick.height / 2) + 1,
+		r = stick.xPosition - (stick.width / 2) - 1,
+		s = stick.xPosition + (stick.width / 2) + 1;
+	int x = ball.xPosition, y = ball.yPosition;
+
+
+	if ((y > p) && (y < q) && (x == r) && (ball.xDirection == RIGHT)) { //hit from left
+		ball.xDirection = !(ball.xDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
+	if ((y > p) && (y < q) && (x == s) && (ball.xDirection == LEFT)) { //hit from right
+		ball.xDirection = !(ball.xDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
+	if ((x > r) && (x < s) && (y == q) && (ball.yDirection == UP)) { //hit from bellow
+		ball.yDirection = !(ball.yDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
+	if ((x > r) && (x < s) && (y == p) && (ball.yDirection == DOWN)) { //hit from above
+		ball.yDirection = !(ball.yDirection);
+		__HAL_TIM_SET_AUTORELOAD(&htim11, 1679);
+		ballVelocityDelay = 0;
+	}
+
+	//diagonals
+	if ((x == r) && (y == q) && (ball.xDirection == RIGHT) && (ball.yDirection == UP)) { //bottom left
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
+	if ((x == r) && (y == p) && (ball.xDirection == RIGHT) && (ball.yDirection == DOWN)) { //top left
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
+	if ((x == s) && (y == q) && (ball.xDirection == LEFT) && (ball.yDirection == UP)) { //bottom right
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
+	if ((x == s) && (y == p) && (ball.xDirection == LEFT) && (ball.yDirection == DOWN)) { //top right
+		ball.xDirection = !(ball.xDirection);
+		ball.yDirection = !(ball.yDirection);
+	}
+}
+
+void moveStick() {
+//	if ((stick.yPosition + (stick.height/2) + 2) >= MAX_Y) stick.yDirection = UP;
+//	if ((stick.yPosition - (stick.height/2) - 2) <= MIN_Y) stick.yDirection = DOWN;
+//
+//	if (!stick.yDirection) stick.yPosition = ++stick.yPosition;
+//	else stick.yPosition = --stick.yPosition;
+
+	if (stick.xPosition >= MAX_X) stick.xDirection = LEFT;
+	if (stick.xPosition <= MIN_X) stick.xDirection = RIGHT;
+
+	if (!stick.xDirection) stick.xPosition = ++stick.xPosition;
+	else stick.xPosition = --stick.xPosition;
+}
+
+void moveBall() {
+	checkCollision();
+	if (ball.xPosition >= MAX_X) ball.xDirection = LEFT;
+	if (ball.xPosition <= MIN_X) ball.xDirection = RIGHT;
+	if (ball.yPosition >= MAX_Y) ball.yDirection = UP;
+	if (ball.yPosition <= MIN_Y) ball.yDirection = DOWN;
+
+	if (!ball.xDirection) ball.xPosition = ++ball.xPosition;
+	else ball.xPosition = --ball.xPosition;
+
+	if (!ball.yDirection) ball.yPosition = ++ball.yPosition;
+	else ball.yPosition = --ball.yPosition;
+}
+
+void drawBall() {
+	lcd5110_box(ball.xPosition, ball.yPosition, ball.width, ball.height);
+}
+
+void drawStick() {
+	lcd5110_box(stick.xPosition, stick.yPosition, stick.width, stick.height);
 }
 
 int _write(int file, uint8_t* p, int len)

@@ -48,18 +48,9 @@ typedef struct {
 	int height;
 	int xPosition;
 	int yPosition;
-	int xDirection;
-	int yDirection;
-} ball_t;
-
-typedef struct {
-	int width;
-	int height;
-	int xPosition;
-	int yPosition;
-	int xDirection;
-	int yDirection;
-} stick_t;
+	int xDirection; //enum left or right
+	int yDirection; //enum um or down
+} object_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -108,7 +99,7 @@ int _write(int file, uint8_t* p, int len);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-ball_t ball = {
+object_t ball = {
 	.width = 4,
 	.height = 4,
 	.xPosition = 1,
@@ -117,7 +108,7 @@ ball_t ball = {
 	.yDirection = DOWN
 };
 
-stick_t stick = {
+object_t stick = {
 	.width = 10,
 	.height = 30,
 	.xPosition = MAX_X / 2,
@@ -165,22 +156,31 @@ int main(void)
   MX_TIM14_Init();
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
-    HAL_TIM_Base_Start_IT(&htim10);
-  HAL_TIM_Base_Start_IT(&htim11);
-  HAL_TIM_Base_Start_IT(&htim13);
-  HAL_TIM_Base_Start_IT(&htim14);
-  HAL_TIM_Base_Start_IT(&htim7); 
-
-  lcd5110_init();
-  
   HAL_UART_Receive_IT(&huart2, &CMD, 1);
-  while (MPU6050_Init(&hi2c1) == 1);  //wait positive answer from MPU6050 and correct initialization
+
+  //wait positive answer from MPU6050 and correct initialization
+  while (MPU6050_Init(&hi2c1) == 1); 
+
+  //configures lcd
+  lcd5110_init();
 
   //initial calibration of the sensor (it has to be at rest)
   printf("\n\n\rCalibration in progress\n\rPlease STAY STILL!!!\n\r");
+  lcd5110_clear();
+  lcd5110_box(MAX_X/2, MAX_Y/2, MAX_X, MAX_Y);
+  lcd5110_refresh();
+  
   calibrate(Ax, Vx, Px, Ay, Vy, Py, timeTracking, &data_index, &slopeY, &slopeX, &MPU6050, &hi2c1);
+  
   printf("Calibration done\n\r");
+  lcd5110_clear();
+  lcd5110_refresh();
 
+  HAL_TIM_Base_Start_IT(&htim7);
+  HAL_TIM_Base_Start_IT(&htim10);
+  HAL_TIM_Base_Start_IT(&htim11);
+  HAL_TIM_Base_Start_IT(&htim13);
+  HAL_TIM_Base_Start_IT(&htim14);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -269,6 +269,20 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	HAL_UART_Transmit(&huart2, &CMD, 1, TOUT);
+	HAL_UART_Receive_IT(&huart2, &CMD, 1);
+}
+
+int _write(int file, uint8_t* p, int len)
+{
+	if(HAL_UART_Transmit(&huart2, p, len, len) == HAL_OK )
+	{
+		return len;
+	}
+	return 0;
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM10) {  //20Hz stick speed
 		moveStick();
@@ -277,14 +291,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		moveBall();
 		checkCollision();
 
-		if (htim->Init.Period == 1679) {
-			if (ballVelocityDelay == 50) {
-				__HAL_TIM_SET_AUTORELOAD(&htim11, 4199);
+		if (htim->Init.Period == 1679) { //if its currently in 50 Hz
+			if (ballVelocityDelay == 50) { //stay like this for one second
+				__HAL_TIM_SET_AUTORELOAD(&htim11, 4199); //change back to 10 Hz
 				ballVelocityDelay = 0;
 			} else ballVelocityDelay++;
 		}
-	}
-	if (htim->Instance == TIM13	) { //30Hz
 	}
 	if (htim->Instance == TIM14) {  //50Hz atualização da tela
 		lcd5110_clear();
@@ -294,13 +306,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 		lcd5110_refresh();
 	}
+	if (htim->Instance == TIM7) read = 1; //timer to read data from MPU6050 every 1ms
 }
 
 void checkCollision() {
-	int p = stick.yPosition - (stick.height / 2) - 1,
-		q = stick.yPosition + (stick.height / 2) + 1,
-		r = stick.xPosition - (stick.width / 2) - 1,
-		s = stick.xPosition + (stick.width / 2) + 1;
+	int p = stick.yPosition - (stick.height / 2) - 1, //get top position
+		  q = stick.yPosition + (stick.height / 2) + 1, //get bottom position
+		  r = stick.xPosition - (stick.width / 2) - 1,  //get right position
+		  s = stick.xPosition + (stick.width / 2) + 1;  //get left position
 	int x = ball.xPosition, y = ball.yPosition;
 
 
@@ -345,29 +358,28 @@ void checkCollision() {
 }
 
 void moveStick() {
-//	if ((stick.yPosition + (stick.height/2) + 2) >= MAX_Y) stick.yDirection = UP;
-//	if ((stick.yPosition - (stick.height/2) - 2) <= MIN_Y) stick.yDirection = DOWN;
-//
-//	if (!stick.yDirection) stick.yPosition = ++stick.yPosition;
-//	else stick.yPosition = --stick.yPosition;
+	int x = - (Py[28] * 100); //get instant position and change to decimal
+	int y = - (Px[28] * 100); // ||
 
-	if (stick.xPosition >= MAX_X) stick.xDirection = LEFT;
-	if (stick.xPosition <= MIN_X) stick.xDirection = RIGHT;
-
-	if (!stick.xDirection) stick.xPosition = ++stick.xPosition;
-	else stick.xPosition = --stick.xPosition;
+	//sensibility configuration
+	stick.xPosition = 10 + (x);
+	stick.yPosition = (MAX_Y/2) + (y * 2);
 }
 
 void moveBall() {
 	checkCollision();
+
+	//change direction if it hits the corners of the display
 	if (ball.xPosition >= MAX_X) ball.xDirection = LEFT;
 	if (ball.xPosition <= MIN_X) ball.xDirection = RIGHT;
 	if (ball.yPosition >= MAX_Y) ball.yDirection = UP;
 	if (ball.yPosition <= MIN_Y) ball.yDirection = DOWN;
 
+	//increase x position moving right, decrease moving left
 	if (!ball.xDirection) ball.xPosition = ++ball.xPosition;
 	else ball.xPosition = --ball.xPosition;
 
+	//increase y position moving down, decrease moving up 
 	if (!ball.yDirection) ball.yPosition = ++ball.yPosition;
 	else ball.yPosition = --ball.yPosition;
 }
@@ -378,21 +390,6 @@ void drawBall() {
 
 void drawStick() {
 	lcd5110_box(stick.xPosition, stick.yPosition, stick.width, stick.height);
-}
-
-int _write(int file, uint8_t* p, int len)
-{
-	if(HAL_UART_Transmit(&huart2, p, len, len) == HAL_OK )
-	{
-		return len;
-	}
-	return 0;
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	if (htim->Instance == TIM7) {
-		read=1; //set read flag to 1 to read data from MPU6050 after 1ms
-	}
 }
 /* USER CODE END 4 */
 

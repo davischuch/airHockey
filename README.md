@@ -265,12 +265,19 @@ At the first iteration (the calibration), we consider $V(t)=0$. That's why the s
 Generalizing the iterations:
 
 $$
-\begin{aligned}
-& d t_{i}=t_{i}-t_{0} \\
-& t_{n}=\sum_{i \in \mathbb{N}}^{n} d t_{i} \mid d t_{0}=0 \\
-& V\left(t_{n}\right)=\sum_{i \in \mathbb{N}^{*}}^{n} A\left(t_{i-1}\right) \times d t_{i} \\
-& P\left(t_{n}\right)=\sum_{i \in \mathbb{N}^{*}}^{n} V\left(t_{i-1}\right) \times d t_{i}
-\end{aligned}
+d t_{i} = t_{i} - t_{0}
+$$
+
+$$
+t_{n} = \sum_{i \in \mathbb{N}}^{n} d t_{i} \mid d t_{0} = 0
+$$
+
+$$
+V(t_{n}) = \sum_{i \in \mathbb{N}^{*}}^{n} A(t_{i-1}) \times d t_{i}
+$$
+
+$$
+P(t_{n}) = \sum_{i \in \mathbb{N}^{*}}^{n} V(t_{i-1}) \times d t_{i}
 $$
 
 Thus, to track position over time, we just have to measure multiple $A(t)$, with the smallest $d t$ possible so the equaitons are valid (i.e., closely resemble real values), and use them to calculate $V(t)$ and $P(t)$. Do this for both axes in parallel, and what you get is a real-time ( $x, y$ ) coordinate-that is, the position.

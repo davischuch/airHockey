@@ -376,4 +376,6 @@ And only resumes when the TIM7 interrupt is executed.
 
 ## Demonstration
 
-<video controls src="assets/demo.mp4" title="Title"></video>
+[Demo video](./assets/demo.mp4)
+
+View also on [LinkedIn](https://www.linkedin.com/posts/edrickthome_embeddedsystems-mpu6050-stm32-ugcPost-7348518984398372864-o0gn?utm_source=share&utm_medium=member_desktop&rcm=ACoAAFrENqEB7rMFyili-5J3ggsq2xeC9lthgzc)

@@ -34,6 +34,7 @@ Sistemas Microprocessados II - Professor Marcos Zuccolotto
         - [Noise filtering](#noise-filtering)
         - [Velocity adjustment](#velocity-adjustment)
         - [Time tracking](#time-tracking)
+- [Demonstration](#demonstration)
         
 
 ## Briefing
@@ -372,3 +373,7 @@ The code execution stops at this line:
 And only resumes when the TIM7 interrupt is executed.
 
 ![resumeExecutionLine](./assets/resumeExecutionLine.png)
+
+## Demonstration
+
+<video controls src="assets/demo.mp4" title="Title"></video>
